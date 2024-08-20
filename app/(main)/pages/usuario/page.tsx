@@ -1,4 +1,3 @@
-/* eslint-disable @next/next/no-img-element */
 'use client';
 import { Button } from 'primereact/button';
 import { Column } from 'primereact/column';
@@ -16,11 +15,14 @@ import { classNames } from 'primereact/utils';
 import React, { useEffect, useRef, useState } from 'react';
 import { ProductService } from '../../../../demo/service/ProductService';
 import { Projeto } from '@/types';
+import { UsuarioService } from '@/services/UsuarioService';
+import { error } from 'console';
+
 
 /* @todo Used 'as any' for types here. Will fix in next version due to onSelectionChange event type issue. */
 const Crud = () => {
     let usuarioVazio: Projeto.Usuario = {
-        id: 0,
+        usuarioId: 0,
         nome: '',
         email: "",
         senha: "",
@@ -28,7 +30,7 @@ const Crud = () => {
 
     };
 
-    const [usuarios, setUsuarios] = useState(null);
+    const [usuarios, setUsuarios] = useState<Projeto.Usuario[]>([]);
     const [usuarioDialog, setUsuarioDialog] = useState(false);
     const [deleteUsuarioDialog, setDeleteUsuarioDialog] = useState(false);
     const [deleteUsuariosDialog, setDeleteUsuariosDialog] = useState(false);
@@ -38,10 +40,21 @@ const Crud = () => {
     const [globalFilter, setGlobalFilter] = useState('');
     const toast = useRef<Toast>(null);
     const dt = useRef<DataTable<any>>(null);
+    const usuarioService = new UsuarioService();
+    const selectedUsuariosNumber = null;
+
 
     useEffect(() => {
+        
         //ProductService.getProducts().then((data) => setProducts(data as any));
-    }, []);
+            usuarioService.listarTodos().then((response) => {
+                console.log(response.data);
+                setUsuarios(response.data);
+            }).catch((error) => {
+                console.log(error);
+            });
+        
+    }, [usuarios]);
 
     
 
@@ -66,8 +79,46 @@ const Crud = () => {
 
     const saveUsuario = () => {
        
-        // setSubmitted(true);
+        setSubmitted(true);
 
+        if(!usuario.usuarioId){
+           
+            usuarioService.inserir(usuario).then((response) =>{
+                console.log(response.data);
+                setUsuario(usuarioVazio);
+                setUsuarioDialog(false);
+                setUsuarios([]);
+                toast.current?.show({
+                    severity:'info',
+                    summary: 'Bem sucedido',
+                    detail: 'Usuário cadastrado com sucesso'
+                })
+            }).catch((error)=>{
+                console.log(error);
+            });
+
+
+            
+        }else{
+            usuarioService.alterar(usuario).then((response)=>{
+                
+                setUsuario(usuarioVazio);
+                setUsuarioDialog(false);
+                setUsuarios([]);
+                toast.current?.show({
+                    severity:'info',
+                    summary: 'Bem sucedido',
+                    detail: 'Utilizador alterado com sucesso'
+                });
+            }).catch((error)=> {
+                console.log(error);
+                toast.current?.show({
+                    severity:'error',
+                    summary: 'Erro',
+                    detail: 'Ocorreu um erro ao alterar o utilizador'
+                });
+            });
+        }
         // if (usuario.nome.trim()) {
         //     let _products = [...(usuario as any)];
         //     let _product = { ...usuario };
@@ -99,29 +150,51 @@ const Crud = () => {
         // }
     };
     
-    const editUsuario = (product: Projeto.Usuario) => {
-        setUsuario({ ...product });
+    const editUsuario = (usuario: Projeto.Usuario) => {
+        setUsuario({ ...usuario });
         setUsuarioDialog(true);
     };
 
-    const confirmDeleteUsuario = (product: Projeto.Usuario) => {
-        setUsuario(product);
+    const confirmDeleteUsuario = (usuario: Projeto.Usuario) => {
+        setUsuario(usuario);
         setDeleteUsuarioDialog(true);
     };
     
     const deleteUsuario = () => {
-        /** 
-        let _usuarios = (usuarios as any)?.filter((val: any) => val.id !== usuario.id);
-        setUsuarios(_usuarios);
-        setDeleteUsuariosDialog(false);
-        setUsuario(usuarioVazio);
-        toast.current?.show({
-            severity: 'success',
-            summary: 'Successful',
-            detail: 'Product Deleted',
-            life: 3000
-        });
-        */
+        
+        usuarioService.excluir(usuario.usuarioId).then((response)=>{
+            
+            console.log(response.data);
+            setUsuario(usuarioVazio);
+            setDeleteUsuarioDialog(false); 
+            setUsuarios([]);
+            toast.current?.show({
+                severity: 'info',
+                summary: 'Bem sucedido',
+                detail: 'Utilizador eliminado!',
+                life:3000,
+            })
+        }).catch((error) => {
+            console.log(error);
+            toast.current?.show({
+                severity: 'error',
+                summary: 'Erro',
+                detail: 'Ocorreu um erro ao eliminar o utilizador!',
+                life:3000,
+            })
+        })
+    };
+    const deleteSelectedUsuarios = () => {
+        // let _products = (products as any)?.filter((val: any) => !(selectedProducts as any)?.includes(val));
+        // setProducts(_products);
+        // setDeleteProductsDialog(false);
+        // setSelectedProducts(null);
+        // toast.current?.show({
+        //     severity: 'success',
+        //     summary: 'Successful',
+        //     detail: 'Products Deleted',
+        //     life: 3000
+        // });
     };
     
 /** 
@@ -155,21 +228,12 @@ const Crud = () => {
     };
 
     const confirmDeleteSelected = () => {
-        setDeleteUsuariosDialog(true);
+        setDeleteUsuariosDialog(true)
+        
+        
     };
 
-    const deleteSelectedUsuarios = () => {
-        // let _products = (products as any)?.filter((val: any) => !(selectedProducts as any)?.includes(val));
-        // setProducts(_products);
-        // setDeleteProductsDialog(false);
-        // setSelectedProducts(null);
-        // toast.current?.show({
-        //     severity: 'success',
-        //     summary: 'Successful',
-        //     detail: 'Products Deleted',
-        //     life: 3000
-        // });
-    };
+    
 
     // const onCategoryChange = (e: RadioButtonChangeEvent) => {
     //     let _product = { ...product };
@@ -177,10 +241,10 @@ const Crud = () => {
     //     setProduct(_product);
     // };
 
-     const onInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>, name: string) => {
+     const onInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>, nome: string) => {
         const val = (e.target && e.target.value) || '';
          let _usuario = { ...usuario };
-         _usuario[`${name}`] = val;
+         _usuario[`${nome}`] = val;
 
          setUsuario(_usuario);
      };
@@ -199,6 +263,7 @@ const Crud = () => {
                 <div className="my-2">
                     <Button label="Novo" icon="pi pi-plus" severity="success" className=" mr-2" onClick={openNew} />
                     <Button label="Excluir" icon="pi pi-trash" severity="danger" onClick={confirmDeleteSelected} disabled={!selectedUsuarios || !(selectedUsuarios as any).length} />
+                    
                 </div>
             </React.Fragment>
         );
@@ -217,7 +282,7 @@ const Crud = () => {
         return (
             <>
                 <span className="p-column-title">Código</span>
-                {rowData.id}
+                {rowData.usuarioId}
             </>
         );
     };
@@ -241,6 +306,7 @@ const Crud = () => {
     const emailBodyTemplate = (rowData: Projeto.Usuario) => {
         return (
             <>
+                
                 <span className="p-column-title">Email</span>
                 {rowData.email}
             </>
@@ -276,14 +342,14 @@ const Crud = () => {
     );
     const deleteUsuarioDialogFooter = (
         <>
-            <Button label="No" icon="pi pi-times" text onClick={hideDeleteUsuariosDialog} />
-            <Button label="Yes" icon="pi pi-check" text onClick={deleteUsuario} />
+            <Button label="Não" icon="pi pi-times" text onClick={hideDeleteUsuarioDialog} />
+            <Button label="Sim" icon="pi pi-check" text onClick={deleteUsuario} />
         </>
     );
     const deleteUsuariosDialogFooter = (
         <>
-            <Button label="No" icon="pi pi-times" text onClick={hideDeleteUsuariosDialog} />
-            <Button label="Yes" icon="pi pi-check" text onClick={deleteSelectedUsuarios} />
+            <Button label="Não" icon="pi pi-times" text onClick={hideDeleteUsuariosDialog} />
+            <Button label="Sim" icon="pi pi-check" text onClick={deleteSelectedUsuarios} />
         </>
     );
 
@@ -299,7 +365,7 @@ const Crud = () => {
                         value={usuarios}
                         selection={selectedUsuarios}
                         onSelectionChange={(e) => setSelectedUsuarios(e.value as any)}
-                        dataKey="id"
+                        dataKey="usuarioId"
                         paginator
                         rows={10}
                         rowsPerPageOptions={[5, 10, 25]}
@@ -312,8 +378,8 @@ const Crud = () => {
                         responsiveLayout="scroll"
                     >
                         <Column selectionMode="multiple" headerStyle={{ width: '4rem' }}></Column>
-                        <Column field="id" header="Código" sortable body={idBodyTemplate} headerStyle={{ minWidth: '15rem' }}></Column>
-                        <Column field="name" header="Name" sortable body={nomeBodyTemplate} headerStyle={{ minWidth: '15rem' }}></Column>
+                        <Column field="usuarioId" header="Código" sortable body={idBodyTemplate} headerStyle={{ minWidth: '15rem' }}></Column>
+                        <Column field="nome" header="Nome" sortable body={nomeBodyTemplate} headerStyle={{ minWidth: '15rem' }}></Column>
                         <Column field="email" header="Email" sortable body={emailBodyTemplate} headerStyle={{ minWidth: '15rem' }}></Column>
                         <Column field="login" header="Login" sortable body={loginBodyTemplate} headerStyle={{ minWidth: '15rem' }}></Column>
                         
@@ -321,7 +387,8 @@ const Crud = () => {
                     </DataTable>
 
                     <Dialog visible={usuarioDialog} style={{ width: '450px' }} header="Detalhes do Usuário" modal className="p-fluid" footer={usuarioDialogFooter} onHide={hideDialog}>
-                       
+                        
+
                         <div className="field">
                             <label htmlFor="nome">Nome</label>
                             <InputText
@@ -336,6 +403,7 @@ const Crud = () => {
                             />
                             {submitted && !usuario.nome && <small className="p-invalid">Nome é obrigatório.</small>}
                         </div>
+
                         <div className="field">
                             <label htmlFor="login">Login</label>
                             <InputText
@@ -349,6 +417,20 @@ const Crud = () => {
                                 })}
                             />
                             {submitted && !usuario.login && <small className="p-invalid">Login é obrigatório.</small>}
+                        </div>
+                        <div className="field">
+                            <label htmlFor="email">Email</label>
+                            <InputText
+                                id="email"
+                                value={usuario.email}
+                                onChange={(e) => onInputChange(e, 'email')}
+                                required
+                                autoFocus
+                                className={classNames({
+                                    'p-invalid': submitted && !usuario.email
+                                })}
+                            />
+                            {submitted && !usuario.email && <small className="p-invalid">Email é obrigatório.</small>}
                         </div>
                         <div className="field">
                             <label htmlFor="senha">Senha</label>
@@ -380,7 +462,7 @@ const Crud = () => {
                     <Dialog visible={deleteUsuariosDialog} style={{ width: '450px' }} header="Confirm" modal footer={deleteUsuariosDialogFooter} onHide={hideDeleteUsuariosDialog}>
                         <div className="flex align-items-center justify-content-center">
                             <i className="pi pi-exclamation-triangle mr-3" style={{ fontSize: '2rem' }} />
-                            {usuario && <span>Are you sure you want to delete the selected usuários?</span>}
+                            {usuario && <span>Realmente deseja excluir os usuários selecionados?</span>}
                         </div>
                     </Dialog>
                 </div>
