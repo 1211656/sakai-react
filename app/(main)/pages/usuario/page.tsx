@@ -4,23 +4,18 @@ import { Column } from 'primereact/column';
 import { DataTable } from 'primereact/datatable';
 import { Dialog } from 'primereact/dialog';
 import { FileUpload } from 'primereact/fileupload';
-import { InputNumber, InputNumberValueChangeEvent } from 'primereact/inputnumber';
 import { InputText } from 'primereact/inputtext';
-import { InputTextarea } from 'primereact/inputtextarea';
-import { RadioButton, RadioButtonChangeEvent } from 'primereact/radiobutton';
-import { Rating } from 'primereact/rating';
-import { Toast } from 'primereact/toast';
 import { Toolbar } from 'primereact/toolbar';
 import { classNames } from 'primereact/utils';
-import React, { useEffect, useRef, useState } from 'react';
-import { ProductService } from '../../../../demo/service/ProductService';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Projeto } from '@/types';
 import { UsuarioService } from '@/services/UsuarioService';
-import { error } from 'console';
+import { Toast } from 'primereact/toast';
 
 
-/* @todo Used 'as any' for types here. Will fix in next version due to onSelectionChange event type issue. */
-const Crud = () => {
+
+
+const Usuario = () => {
     let usuarioVazio: Projeto.Usuario = {
         usuarioId: 0,
         nome: '',
@@ -35,12 +30,12 @@ const Crud = () => {
     const [deleteUsuarioDialog, setDeleteUsuarioDialog] = useState(false);
     const [deleteUsuariosDialog, setDeleteUsuariosDialog] = useState(false);
     const [usuario, setUsuario] = useState<Projeto.Usuario>(usuarioVazio);
-    const [selectedUsuarios, setSelectedUsuarios] = useState(null);
+    const [selectedUsuarios, setSelectedUsuarios] = useState<Projeto.Usuario[]>([]);
     const [submitted, setSubmitted] = useState(false);
     const [globalFilter, setGlobalFilter] = useState('');
     const toast = useRef<Toast>(null);
     const dt = useRef<DataTable<any>>(null);
-    const usuarioService = new UsuarioService();
+    const usuarioService = useMemo( () => new UsuarioService(), [] );
     const selectedUsuariosNumber = null;
 
 
@@ -184,17 +179,33 @@ const Crud = () => {
             })
         })
     };
+
+
     const deleteSelectedUsuarios = () => {
-        // let _products = (products as any)?.filter((val: any) => !(selectedProducts as any)?.includes(val));
-        // setProducts(_products);
-        // setDeleteProductsDialog(false);
-        // setSelectedProducts(null);
-        // toast.current?.show({
-        //     severity: 'success',
-        //     summary: 'Successful',
-        //     detail: 'Products Deleted',
-        //     life: 3000
-        // });
+
+        Promise.all(selectedUsuarios.map((_usuario)=> {
+            if(_usuario.usuarioId){
+                usuarioService.excluir(_usuario.usuarioId)
+
+                .then((response)=> {
+                    
+                }).catch((error) => {
+
+                })
+            }
+        })).then((response)=> {
+            
+            setUsuarios([]);
+            setSelectedUsuarios([]);
+            setDeleteUsuariosDialog(false);
+            
+            toast.current?.show({
+                severity: 'info',
+                summary: 'Bem sucedido',
+                detail: 'Utilizadores eliminados!',
+                life:3000,
+            })
+        })
     };
     
 /** 
@@ -471,4 +482,4 @@ const Crud = () => {
     );
 };
 
-export default Crud;
+export default Usuario;
